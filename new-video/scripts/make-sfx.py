@@ -126,3 +126,45 @@ if __name__ == "__main__":
                      ("sparkle", sparkle), ("buzz", buzz), ("hit", hit)]:
         save(out / f"{name}.wav", fn())
         print("wrote", name)
+
+
+def rumble(dur=2.4):
+    # car-wash brush: low noise with rotation "flap" modulation
+    tt = t(dur)
+    x = lowpass(rng.standard_normal(len(tt)), 380)
+    flap = 0.55 + 0.45 * np.abs(np.sin(2 * np.pi * 6.5 * tt))
+    swish = highpass(rng.standard_normal(len(tt)), 2500) * (np.abs(np.sin(2 * np.pi * 6.5 * tt)) ** 6) * 0.25
+    return norm((x * flap + swish) * env(len(tt), 0.15, 0.4), 0.7)
+
+
+def scratch(dur=0.7):
+    tt = t(dur)
+    n = len(tt)
+    noise = rng.standard_normal(n)
+    center = np.linspace(3200, 5200, n) + 600 * np.sin(2 * np.pi * 23 * tt)
+    band = lowpass(noise, center) - lowpass(noise, center * 0.6)
+    grain = (rng.random(n) < 0.004).astype(float) * rng.uniform(0.5, 1, n)
+    grain = lowpass(grain, 6000)
+    return norm((band + grain * 3) * env(n, 0.02, 0.2), 0.55)
+
+
+def snap(dur=0.35):
+    tt = t(dur)
+    crack = highpass(rng.standard_normal(len(tt)), 1500) * np.exp(-tt * 45)
+    body = np.sin(2 * np.pi * np.cumsum(np.geomspace(420, 120, len(tt))) / SR) * np.exp(-tt * 18)
+    return norm(crack * 1.2 + body * 0.6, 0.75)
+
+
+def riser(dur=0.9):
+    tt = t(dur)
+    n = len(tt)
+    x = lowpass(rng.standard_normal(n), np.linspace(300, 9000, n))
+    return norm(x * np.linspace(0.05, 1, n) ** 2 * env(n, 0.01, 0.03), 0.5)
+
+
+EXTRA = [("rumble", rumble), ("scratch", scratch), ("snap", snap), ("riser", riser)]
+
+if __name__ == "__main__":
+    for name, fn in EXTRA:
+        save(Path(sys.argv[1]) / f"{name}.wav", fn())
+        print("wrote", name)
